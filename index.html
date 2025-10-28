@@ -58,24 +58,48 @@
       max-width: 400px;
     }
 
-    .session-item {
+    .session-item, .summary-item {
       background: #fff;
       padding: 0.8rem;
       margin-bottom: 0.5rem;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .summary-item {
-      background: #e8f0fe;
-      padding: 0.8rem;
-      margin-bottom: 0.5rem;
+    .delete-btn {
+      background-color: #dc3545;
+      border: none;
+      color: white;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .clear-btn {
+      background-color: #6c757d;
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
       border-radius: 8px;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .clear-btn:hover, .delete-btn:hover {
+      opacity: 0.85;
     }
   </style>
 </head>
 <body>
   <h1>Study Session Timer</h1>
+
   <div class="timer-container">
     <input type="text" id="subject" placeholder="Enter subject (e.g., Math)" />
     <h2 id="timer">00:00:00</h2>
@@ -86,11 +110,13 @@
   <div class="sessions">
     <h2>Past Sessions</h2>
     <div id="sessionList"></div>
+    <button class="clear-btn" id="clearSessionsBtn">Clear All Sessions</button>
   </div>
 
   <div class="summary">
     <h2>This Week's Summary</h2>
     <div id="summaryList"></div>
+    <button class="clear-btn" id="clearSummaryBtn">Clear Summary</button>
   </div>
 
   <script>
@@ -104,6 +130,8 @@
     const subjectInput = document.getElementById("subject");
     const sessionList = document.getElementById("sessionList");
     const summaryList = document.getElementById("summaryList");
+    const clearSessionsBtn = document.getElementById("clearSessionsBtn");
+    const clearSummaryBtn = document.getElementById("clearSummaryBtn");
 
     function updateTimer() {
       const time = Date.now() - startTime + elapsedTime;
@@ -148,11 +176,20 @@
     function saveSession(subject, duration) {
       const sessions = JSON.parse(localStorage.getItem("sessions") || "[]");
       sessions.push({
+        id: Date.now(),
         subject,
         duration,
         date: new Date().toISOString(),
       });
       localStorage.setItem("sessions", JSON.stringify(sessions));
+    }
+
+    function deleteSession(id) {
+      const sessions = JSON.parse(localStorage.getItem("sessions") || "[]");
+      const updated = sessions.filter(s => s.id !== id);
+      localStorage.setItem("sessions", JSON.stringify(updated));
+      loadSessions();
+      updateSummary();
     }
 
     function loadSessions() {
@@ -163,7 +200,10 @@
         div.className = "session-item";
         const date = new Date(s.date).toLocaleString();
         const mins = Math.round(s.duration / 60000);
-        div.textContent = `${s.subject} — ${mins} min on ${date}`;
+        div.innerHTML = `
+          <span>${s.subject} — ${mins} min on ${date}</span>
+          <button class="delete-btn" onclick="deleteSession(${s.id})">Delete</button>
+        `;
         sessionList.appendChild(div);
       });
     }
@@ -187,10 +227,37 @@
         const hours = (duration / 3600000).toFixed(2);
         const div = document.createElement("div");
         div.className = "summary-item";
-        div.textContent = `${subject}: ${hours} hrs this week`;
+        div.innerHTML = `
+          <span>${subject}: ${hours} hrs this week</span>
+          <button class="delete-btn" onclick="deleteSubject('${subject}')">Delete</button>
+        `;
         summaryList.appendChild(div);
       }
     }
+
+    function deleteSubject(subject) {
+      const sessions = JSON.parse(localStorage.getItem("sessions") || "[]");
+      const updated = sessions.filter(s => s.subject !== subject);
+      localStorage.setItem("sessions", JSON.stringify(updated));
+      loadSessions();
+      updateSummary();
+    }
+
+    clearSessionsBtn.addEventListener("click", () => {
+      if (confirm("Are you sure you want to delete all sessions?")) {
+        localStorage.removeItem("sessions");
+        loadSessions();
+        updateSummary();
+      }
+    });
+
+    clearSummaryBtn.addEventListener("click", () => {
+      if (confirm("Are you sure you want to clear the summary?")) {
+        localStorage.removeItem("sessions");
+        loadSessions();
+        updateSummary();
+      }
+    });
 
     loadSessions();
     updateSummary();
